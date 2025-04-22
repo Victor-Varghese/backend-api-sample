@@ -1,7 +1,10 @@
+require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
-const productRoute = require('./routes/product.route.js')
+const productRoute = require("./routes/product.route.js");
 const app = express();
+
+const jwt = require("jsonwebtoken");
 
 mongoose
   .connect(
@@ -22,11 +25,56 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // route
-app.use("/api/products", productRoute)
+app.use("/api/products", productRoute);
 
 app.get("/", (req, res) => {
   res.send("Hello from Node Server");
 });
+
+const posts = [
+  {
+    username: "victor",
+    title: "Post 1",
+  },
+  {
+    username: "Test",
+    title: "Post 2",
+  },
+];
+
+app.get("/posts", authenticateToken, (req, res) => {
+  console.log("req.user", req.user);
+
+  res.json(posts.filter((each) => each.username === req.user.name));
+});
+
+app.post("/login", (req, res) => {
+  //Authenticate user
+
+  const username = req.body.username;
+  const user ={ name: username };
+  const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET);
+  res.json({
+    accessToken: accessToken,
+  });
+});
+
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  if (token === null) {
+    return res.sendStatus(401);
+  }
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
+    if (err) {
+      return res.sendStatus(401);
+    }
+    // valid user
+    req.user = user;
+    next();
+  });
+}
 
 // restructured to route and controller
 
